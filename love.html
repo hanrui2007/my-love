@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>爱心温馨提示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+            user-select: none;
+        }
+        body {
+            overflow: hidden;
+            background: #fff;
+        }
+        .tip-window {
+            position: fixed;
+            width: 250px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: none;
+            z-index: 9999;
+            text-align: center;
+            padding: 0 10px;
+            font-size: 16px;
+            will-change: top, left;
+        }
+    </style>
+</head>
+<body>
+<script>
+const CONFIG = {
+    default_window_count: 10,
+    max_window_count: 100,
+    window_width: 250,
+    window_height: 60,
+    display_time: 30000,
+    start_delay: 50,
+    font_size: 16,
+    heart_scale: 0.4,
+    scatter_steps: 60,       // 更多步数
+    scatter_step_ms: 25,    // 每帧间隔变大 → 更慢
+    scatter_stagger_ms: 150
+};
+
+const TIPS = [
+    "静静多喝水哦~，静静保持微笑呀", "静静每天都要元气满满", "静静记得吃水果",
+    "静静保持好心情", "静静好好爱自己", "静静我想你了", "静静梦想成真",
+    "静静期待下一次见面", "静静金榜题名", "静静顺顺利利", "静静早点休息",
+    "静静愿所有烦恼都消失", "静静别熬夜", "静静今天过得开心嘛",
+    "静静天冷了，多穿衣服"
+];
+
+const BG_COLORS = [
+    "lightpink", "skyblue", "lightgreen", "lavender", "lightyellow",
+    "plum", "coral", "bisque", "aquamarine", "mistyrose",
+    "honeydew", "lavenderblush", "oldlace"
+];
+
+let isScattered = false;
+const windows = [];
+
+function getHeartCoords(index, total, screenW, screenH, winW, winH) {
+    const t = 2 * Math.PI * index / total;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+
+    const scale = Math.min(screenW, screenH) * CONFIG.heart_scale / 16;
+    const cx = screenW / 2 - winW / 2;
+    const cy = screenH / 2 - winH / 2;
+
+    let fx = cx + x * scale;
+    let fy = cy - y * scale;
+
+    fx += (Math.random() - 0.5) * 10;
+    fy += (Math.random() - 0.5) * 10;
+
+    fx = Math.max(0, Math.min(fx, screenW - winW));
+    fy = Math.max(0, Math.min(fy, screenH - winH));
+
+    return { x: fx, y: fy };
+}
+
+function startScatter(win, startX, startY) {
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
+    const ww = CONFIG.window_width;
+    const wh = CONFIG.window_height;
+
+    const targetX = Math.random() * (sw - ww);
+    const targetY = Math.random() * (sh - wh);
+
+    const steps = CONFIG.scatter_steps;
+    const stepMs = CONFIG.scatter_step_ms;
+    const stagger = Math.random() * CONFIG.scatter_stagger_ms;
+
+    setTimeout(() => {
+        let step = 0;
+        function run() {
+            if (step > steps) return;
+            const t = step / steps;
+            const ease = 1 - (1 - t) ** 3;
+            const nx = startX + (targetX - startX) * ease;
+            const ny = startY + (targetY - startY) * ease;
+            win.style.left = nx + "px";
+            win.style.top = ny + "px";
+            step++;
+            setTimeout(() => requestAnimationFrame(run), stepMs);
+        }
+        run();
+    }, stagger);
+}
+
+function createWindow(index, total) {
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
+    const ww = CONFIG.window_width;
+    const wh = CONFIG.window_height;
+
+    const pos = getHeartCoords(index, total, sw, sh, ww, wh);
+    const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
+    const bg = BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)];
+
+    const div = document.createElement("div");
+    div.className = "tip-window";
+    div.style.width = ww + "px";
+    div.style.height = wh + "px";
+    div.style.left = pos.x + "px";
+    div.style.top = pos.y + "px";
+    div.style.backgroundColor = bg;
+    div.innerText = tip;
+    document.body.appendChild(div);
+
+    const data = { el: div, x: pos.x, y: pos.y, scattered: false };
+    windows.push(data);
+
+    function onClick(e) {
+        if (isScattered) return;
+        isScattered = true;
+        windows.forEach(w => {
+            if (!w.scattered) {
+                w.scattered = true;
+                startScatter(w.el, w.x, w.y);
+            }
+        });
+    }
+
+    div.addEventListener("click", onClick);
+    setTimeout(() => { if (div.parentNode) div.parentNode.removeChild(div); }, CONFIG.display_time);
+}
+
+async function startTips(count = 100) {
+    count = Math.min(count, CONFIG.max_window_count);
+    for (let i = 0; i < count; i++) {
+        createWindow(i, count);
+        await new Promise(r => setTimeout(r, CONFIG.start_delay));
+    }
+}
+
+startTips(100);
+</script>
+</body>
+</html>
